@@ -5,13 +5,13 @@ app = Flask(__name__, template_folder='.')
 # Dictionary to store chat
 chats = {}
 
-
+# Implemented by Dor
 @app.route('/', methods=['GET'])
 def serve_html():
     # Serve the HTML file
     return render_template('index.html')
 
-
+# Implemented by Dor
 @app.route('/api/chat/<room>', methods=['GET'])
 def get_chat(room):
     # Return chat for the room or an empty string if no messages exist
