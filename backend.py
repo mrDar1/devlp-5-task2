@@ -1,66 +1,58 @@
 from flask import Flask, render_template, request
+from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
-import json
 
 app = Flask(__name__, template_folder='.')
 
-# JSON file to store chat
-chats_file = 'chats.json'
+# Database settings
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://your_mysql_user:your_mysql_password@db/chat_app'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
 
-# Load JSON file or initialize empty JSON
-def load_chats():
-    try:
-        with open(chats_file, 'r') as file:
-            return json.load(file)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {}
+# Define DB
+class Chat(db.Model):
+    __tablename__ = 'chats'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    room = db.Column(db.String(255), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
+    username = db.Column(db.String(255), nullable=False)
+    message = db.Column(db.Text, nullable=False)
 
-def save_chats(chats):
-    with open(chats_file, 'w') as file:
-        json.dump(chats, file)
-
-# Initialize chats variable from file
-chats = load_chats()
-
-# Implemented by Dor
+# Serve the static HTML
 @app.route('/', methods=['GET'])
-def serve_html():
-    # Serve the HTML file
+def serve_root_html():
     return render_template('index.html')
 
-# Implemented by Dor
+@app.route('/<room>', methods=['GET'])
+def serve_html(room):
+    return render_template('index.html')
+
+# POST API to add a message
+@app.route('/api/chat/<room>', methods=['POST'])
+def post_message(room):
+    username = request.form.get('username')
+    message = request.form.get('msg')
+
+    if not username or not message:
+        return "Username and message are required!", 400
+
+    # Create a new chat entry
+    new_chat = Chat(room=room, username=username, message=message)
+    db.session.add(new_chat)
+    db.session.commit()
+
+    return "Message received", 200
+
+# GET API to fetch messages
 @app.route('/api/chat/<room>', methods=['GET'])
 def get_chat(room):
-    # Return chat for the room or an empty string if no messages exist
-    return "\n".join(chats.get(room, []))
-
-
-
-# Implemented by Dar
-@app.route('/<room>', methods=['GET'])
-def get_room(room):
-    # Serve the HTML file
-    return render_template('index.html')
-
-# Implemented by Dar
-@app.route('/api/chat/<room>', methods=['POST'])
-def post_chat(room):
-    username = request.form.get('username')
-    msg = request.form.get('msg')
-
-    if not username or not msg:
-        return "miss username or message", 200
-
-    if room not in chats:
-        chats[room] = []
-
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    chats[room].append(f"[{timestamp}] {username}: {msg}")
-    save_chats(chats)  # Save to JSON file
-
-    return "success", 200  # Returning plain string
+    # Query messages for the given room
+    chats = Chat.query.filter_by(room=room).order_by(Chat.timestamp).all()
+    messages = [f"[{chat.timestamp}] {chat.username}: {chat.message}" for chat in chats]
+    return "\n".join(messages), 200
 
 if __name__ == '__main__':
-    # Run the Flask app
+    # Ensure the database tables are created
+    with app.app_context():
+        db.create_all()
     app.run(debug=True, host='0.0.0.0')
