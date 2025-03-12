@@ -35,31 +35,30 @@ def get_chat(room):
     return "\n".join(chats.get(room, []))
 
 
+
+# Implemented by Dar
 @app.route('/<room>', methods=['GET'])
 def get_room(room):
     # Serve the HTML file
     return render_template('index.html')
 
+# Implemented by Dar
 @app.route('/api/chat/<room>', methods=['POST'])
 def post_chat(room):
     username = request.form.get('username')
     msg = request.form.get('msg')
 
     if not username or not msg:
-        return "miss username or message", 200  # Returning plain string
-        # return json.dumps({"error": "Missing username or message"}), 400
+        return "miss username or message", 200
 
     if room not in chats:
         chats[room] = []
 
-    # Get current date and time
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Append message with timestamp
     chats[room].append(f"[{timestamp}] {username}: {msg}")
     save_chats(chats)  # Save to JSON file
 
-    # return json.dumps({"success": True}), 200  # Returning plain JSON string
     return "success", 200  # Returning plain string
 
 if __name__ == '__main__':
